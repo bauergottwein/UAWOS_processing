@@ -52,5 +52,9 @@ Orco_1_attributes['ylim'] = [184,191]
 Orco_1_attributes['CL_dist_threshold'] = 100 # this is the threshold used to discard points, i.e. any point further than this from the centerline is discarded.
 
 Orco_1 = UAWOS_LX80_flight(Orco_1_attributes)
+if not os.path.exists(my_path + os.sep + 'Level_2'):
+    os.makedirs(my_path + os.sep + 'Level_2')
+if not os.path.exists(my_path + os.sep + 'Level_3'):
+    os.makedirs(my_path + os.sep + 'Level_3')
 Orco_1 = Orco_1.process_LX80()
 Orco_1.plot_LX80_processed()

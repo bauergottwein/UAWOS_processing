@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import segyio
-from UAWOS_Utilities import skyhubtime, posinterp, raster_interp, hubdist     
+from UAWOS_Utilities import skyhubtime, raster_interp, hubdist     
 
 class UAWOS_LX80_flight:
     def __init__(self, config_dict):

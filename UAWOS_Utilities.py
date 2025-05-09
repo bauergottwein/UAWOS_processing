@@ -18,7 +18,7 @@ def skyhubtime(df,datename,timename): #turns time from skyhub into datetime obje
     return np.array(t)
 
 def posinterp(df,dfpos,datename,timename,latname,lonname,altname,anglesyn): #interpolates accurate positions by matching the time stamp in a position log and a ppk file when time is given as date and time columns
-    UTC_GPST_offset = 18*1E6 # in microseconds
+    UTC_GPST_offset = 18*1E6 # in microseconds, may have to be adjusted
     df=df.copy(deep = True)
     tpos = skyhubtime(dfpos,datename,timename)
     tsens = skyhubtime(df,'Date','Time')
