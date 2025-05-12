@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from osgeo import gdal
 from scipy import interpolate
+import segyio
 from scipy.spatial import cKDTree
 
 def skyhubtime(df,datename,timename): #turns time from skyhub into datetime objects
@@ -80,3 +81,24 @@ def hubdist(points_in,hubs,tol,chainage_field,**kwargs): # matches data points t
     points['Distance_Hubs'] = dist
     points = points[points['Distance_Hubs']<=tol]
     return points
+
+def readsegy(filename): #areads full waveform data from WPR/Doppler
+    skiptraceini = 0 # 
+    skiptraceend = 0
+    with segyio.open(filename,strict = False,endian = 'little') as f:
+        traces = [np.copy(tr) for tr in f.trace[skiptraceini:-(skiptraceend +1)]]
+        headers = [head for head in f.header[skiptraceini:-(skiptraceend +1)]]
+        sample_rate = segyio.tools.dt(f) / 1000
+    print('Sampling rate: ', sample_rate)
+    ntrace = len(traces)
+    print('Number of traces in dataset: ', ntrace)
+    nsamples = len(traces[0])
+    print('Number of samples in each trace: ',nsamples)
+    traces = np.transpose(np.array(traces))
+    hdic = []
+    for i in range(ntrace):
+        hnow = dict((a.strip(), int(b.strip()))
+                         for a, b in (element.split(':')  
+                                      for element in str(headers[i])[2:-1].split(', ')))
+        hdic.append(hnow)      
+    return traces, hdic, sample_rate, ntrace, nsamples

@@ -66,12 +66,13 @@ class UAWOS_ECT_flight:
         ax2.set_ylabel('Altitude.' +  self.z_EPSG + ' (m)')
         
     def find_WSE(self):
+        offset_TTF0_true_ground = 0.21 #estimated empirically from in-situ WSE
         echo_data = self.echo_data.loc[self.Start_sample:self.End_sample]
         meanalt = echo_data['Altitude.' + self.z_EPSG + ' (m)'].mean()
         print(meanalt)
         meanrange = echo_data['Altitude TTF'].mean()
         print(meanrange)
-        print('WSE = ', meanalt-meanrange)
+        print('WSE = ', meanalt-meanrange-offset_TTF0_true_ground)
         
     def plot_XS(self):
         plt.figure()
