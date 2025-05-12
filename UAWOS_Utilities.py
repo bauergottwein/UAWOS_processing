@@ -10,6 +10,7 @@ from osgeo import gdal
 from scipy import interpolate
 import segyio
 from scipy.spatial import cKDTree
+from scipy.stats import norm
 
 def skyhubtime(df,datename,timename): #turns time from skyhub into datetime objects
     tt=df[datename] + df[timename]
@@ -102,3 +103,11 @@ def readsegy(filename): #areads full waveform data from WPR/Doppler
                                       for element in str(headers[i])[2:-1].split(', ')))
         hdic.append(hnow)      
     return traces, hdic, sample_rate, ntrace, nsamples
+
+def peakmodel2(v,mu1,mu2,s1,s2,f1,f2):
+    ret_pow = f1*norm.pdf((v-mu1)/s1) + f2*norm.pdf((v-mu2)/s2)
+    return ret_pow
+
+def peakmodel1(v,mu1,s1,f1):
+    ret_pow = f1*norm.pdf((v-mu1)/s1)
+    return ret_pow

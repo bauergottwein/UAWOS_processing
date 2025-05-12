@@ -21,7 +21,8 @@ class UAWOS_ZAero_flight:
         for key, value in config_dict.items():
             setattr(self, key, value)
             
-    def process_WPR_flight(self):
+    def process_WPR_flight(self,**kwargs):
+        geoid_exists = kwargs.get('geoid_exists',True)
         cl = gpd.read_file(self.refline_file)
         cl = cl.to_crs(crs = self.xy_EPSG)
         dfref = pd.DataFrame(np.array([cl['geometry'].x,cl['geometry'].y,cl[self.chainage_field]]).transpose(), columns = ['Easting', 'Northing', 'Chainage'])
@@ -41,31 +42,34 @@ class UAWOS_ZAero_flight:
         df['geometry'] = df.apply(lambda x: Point((float(x.Longitude), float(x.Latitude))), axis=1)
         df = gpd.GeoDataFrame(df, geometry='geometry', crs = 4326)
         df = df.to_crs(self.xy_EPSG)
-        Geoid = raster_interp(df['geometry'].x.values,df['geometry'].y.values,self.geoid_tiff)
-        df[self.z_EPSG] = Geoid
-        h_geoid = df['Altitude WGS84'] - df[self.z_EPSG]
-        df['Altitude.' + self.z_EPSG + ' (m)'] = h_geoid
+        if geoid_exists:
+            Geoid = raster_interp(df['geometry'].x.values,df['geometry'].y.values,self.geoid_tiff)
+            df[self.z_EPSG] = Geoid
+            h_geoid = df['Altitude WGS84'] - df[self.z_EPSG]
+            df['Altitude.' + self.z_EPSG + ' (m)'] = h_geoid
         df['Easting.' + self.xy_EPSG + ' (m)'] = df['geometry'].x
         df['Northing.' + self.xy_EPSG + ' (m)'] = df['geometry'].y
         df = hubdist(df,dfref,self.CL_dist_threshold,'Chainage',Easting = 'Easting.' + self.xy_EPSG + ' (m)', Northing = 'Northing.' + self.xy_EPSG + ' (m)')
         self.pos_data = df
         return self
     
-    def plot_Tnum_Alt_vs_XScoord(self):
+    def plot_Tnum_Alt_vs_XScoord(self,**kwargs):
         fig, ax1 = plt.subplots()
         ax2 = ax1.twinx()
         pos_data = self.pos_data
-        ax2.plot(pos_data['Hubs'],pos_data['Altitude.' + self.z_EPSG + ' (m)'],'r',label='Altitude')
+        Alt_field = kwargs.get('Alt_field','Altitude.' + self.z_EPSG + ' (m)')
+        ax2.plot(pos_data['Hubs'],pos_data[Alt_field],'r',label='Altitude')
         ax1.plot(pos_data['Hubs'],pos_data['WPR Trace'], label = 'Trace Number')
         ax1.set_xlabel('Cross section coordinate (m)')
         ax1.set_ylabel('WPR Trace Number')
         ax2.set_ylabel('Altitude.' + self.z_EPSG + ' (m)')
         
-    def plot_XScoord_Alt_vs_Tnum(self):
+    def plot_XScoord_Alt_vs_Tnum(self,**kwargs):
         fig, ax1 = plt.subplots()
         ax2 = ax1.twinx()
         pos_data = self.pos_data
-        ax2.plot(pos_data['WPR Trace'],pos_data['Altitude.' + self.z_EPSG + ' (m)'],'r')
+        Alt_field = kwargs.get('Alt_field','Altitude.' + self.z_EPSG + ' (m)')
+        ax2.plot(pos_data['WPR Trace'],pos_data[Alt_field],'r')
         ax1.plot(pos_data['WPR Trace'],pos_data['Hubs'])
         ax1.set_xlabel('WPR Trace Number')
         ax1.set_ylabel('Cross section coordinate (m)')
@@ -260,4 +264,31 @@ class UAWOS_ZAero_flight:
         XS_L3_auto.to_csv(self.L3_output, index = False)
         XS_L2_auto=XS_L3_auto.drop(columns=['Cross section coordinate (m)'])
         XS_L2_auto.to_csv(self.L2_output, index = False )
+        
+    def field_test(self,starttrace, endtrace,**kwargs):
+        gain_lt = kwargs.get('gain_lt',1)
+        gain_ut = kwargs.get('gain_ut',3)
+        gain_power = kwargs.get('gain_power',2)
+        data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
+        subdata = data[:,starttrace:endtrace+1]
+        eps = 81 #relative permittivity of water
+        vwat = 3E8/eps**0.5
+        ttorange = sample_rate*1E-9*vwat/2 #sampling rate in ns
+        rangeax = np.linspace(1,nsamples,nsamples)*ttorange
+        trax = np.linspace(0,subdata.shape[1]-1,subdata.shape[1])
+        mdata = subdata.mean(1)
+        mmdata = np.tile(mdata,(subdata.shape[1],1)).transpose()
+        ndata = subdata-mmdata
+        gain = ((rangeax-gain_lt)/(gain_ut-gain_lt))**gain_power
+        gain[rangeax<gain_lt]=0
+        gain[rangeax>gain_ut]=1
+        mgain = np.tile(gain,(subdata.shape[1],1)).transpose()
+        gndata = ndata*mgain
+        XXv,YYv = np.meshgrid(trax,rangeax)
+        plt.figure()
+        plt.pcolor(XXv,YYv,gndata,vmin=np.percentile(gndata,0.1),vmax=np.percentile(gndata,99.9))
+        plt.xlabel('Trace')
+        plt.ylabel('WPR range, m')
+        plt.title(self.name_segyfile.split('\\')[-1] )
+        plt.show()
         
