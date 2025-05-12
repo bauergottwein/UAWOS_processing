@@ -1,0 +1,10 @@
+conda create -n UAWOS spyder
+conda activate UAWOS
+conda install geopandas
+conda install -c conda-forge python scipy numpy matplotlib pandas xlrd openpyxl segyio netCDF4 GDAL shapely fiona
+conda install opencv
+conda install openpiv
+conda install ffmpeg-python
+pip install vidstab
+conda install h5py
+conda instal jupyterlab
