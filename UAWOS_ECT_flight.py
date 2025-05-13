@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from UAWOS_Utilities import raster_interp, hubdist    
+from UAWOS_Utilities import raster_interp, hubdist, posinterp    
 
      
         
@@ -29,6 +29,13 @@ class UAWOS_ECT_flight:
         cl = gpd.read_file(self.refline_file)
         cl = cl.to_crs(crs=self.xy_EPSG)
         dfchain = pd.DataFrame(np.array([cl['geometry'].x,cl['geometry'].y,cl[self.chainage_field]]).transpose(), columns = ['Easting', 'Northing', 'XS_coord'])
+        if not self.RTK_on:
+            n_ppkfile = self.name_ppkfile
+            ppk_data = pd.read_csv(self.name_ppkfile,skiprows = 9,delimiter=r"\s+")
+            echo_data = posinterp(echo_data,ppk_data,'%','UTC','latitude(deg)','longitude(deg)', 'height(m)', False)
+            lat_name = 'Latitude_interpolated'
+            lon_name = 'Longitude_interpolated'
+            alt_name = 'Altitude_interpolated'
         echo_data = pd.DataFrame(np.array([echo_data['Date'], echo_data['Time'], echo_data[lon_name], echo_data[lat_name], echo_data[alt_name], echo_data['ALT:Altitude'], echo_data['ECHO:True Depth'], echo_data['ECHO:Pitch'], echo_data['ECHO:Roll']]).transpose(), columns = ['Date','Time','Longitude','Latitude','Altitude WGS84','Altitude TTF','Echo Depth','Pitch','Roll'])
         echo_data.loc[echo_data['Echo Depth']==0,'Echo Depth'] = np.nan
         echo_data['geometry'] = echo_data.apply(lambda x: Point((float(x.Longitude), float(x.Latitude))), axis=1)

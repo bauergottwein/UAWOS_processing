@@ -38,11 +38,11 @@ def posinterp(df,dfpos,datename,timename,latname,lonname,altname,anglesyn): #int
         pitchint = np.interp(tsens.astype('float'),tpos,pitchpos)
         rollpos = dfpos['Roll']
         rollint = np.interp(tsens.astype('float'),tpos,rollpos)
-        df['Pitch interpolated'] = pitchint
-        df['Roll interpolated'] = rollint
-    df['Latitude interpolated'] = latint
-    df['Longitude interpolated'] = lonint
-    df['Altitude interpolated'] = altint
+        df['Pitch_interpolated'] = pitchint
+        df['Roll_interpolated'] = rollint
+    df['Latitude_interpolated'] = latint
+    df['Longitude_interpolated'] = lonint
+    df['Altitude_interpolated'] = altint
     df = df[np.logical_and(tsens.astype('float')>np.min(tpos),tsens.astype('float')<np.max(tpos))]
     return df
 

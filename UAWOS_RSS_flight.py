@@ -11,34 +11,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import os
-from UAWOS_Utilities import readsegy, skyhubtime, raster_interp, hubdist, peakmodel1, peakmodel2
+from UAWOS_Utilities import readsegy, skyhubtime, raster_interp, hubdist, peakmodel1, peakmodel2, posinterp
           
 class UAWOS_RSS_flight:
     def __init__(self, config_dict):
         print("UAWOS RSS flight class constructor")
         for key, value in config_dict.items():
             setattr(self, key, value)
-        
-    def visualize_radargram(self):
         cfreq = 24E9 #Hz, center frequency of the Doppler radar
         spol = 3E8 # Speed of light in air, m/s
         wlen = spol/cfreq # radar wavelength, m
         print('Wavelength of Doppler radar in m:', wlen)
         dshift = 2/wlen # 1/m, i.e. Hz/(m/s),i.e. Doppler shift per velocity
         print('Doppler shift per unit speed in 1/m or Hz/(m/s): ', dshift)
-        vres = 7.3921 # mm/s velocity resolution of the Doppler radar, according to Geolux
-        specres = specres = vres/1000*dshift #spectral resolution of the Doppler radar
+        self.vres = 7.3921 # mm/s velocity resolution of the Doppler radar, according to Geolux
+        specres = specres = self.vres/1000*dshift #spectral resolution of the Doppler radar
         print('Spectral resolution of Doppler spectrum in Hz: ', specres)
-        vaxis = np.concatenate((np.linspace(1,2048,2048)*vres,np.linspace(-2048,-1,2048)*vres))
-        print('Velocity axis of the radar plot in mm/s: ', vaxis)
-        faxis = np.concatenate((np.linspace(1,2048,2048)*specres,np.linspace(-2048,-1,2048)*specres))
-        print('Frequency axis of the radar plot in Hz: ',faxis)
-        angle = 45 # 
-        vaxis_sort = np.concatenate((np.linspace(-2048,-1,2048)*vres, np.linspace(1,2048,2048)*vres))/10/ np.cos(angle/360*2*np.pi)
-
+        self.angle = 45 #
+        
+    def visualize_radargram(self):
         data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
         data = np.concatenate((data[2048:,:],data[0:2048,:]))
-        vaxis_sort = np.concatenate((np.linspace(-2048,-1,2048)*vres, np.linspace(1,2048,2048)*vres))/10/ np.cos(angle/360*2*np.pi)
+        vaxis_sort = np.concatenate((np.linspace(-2048,-1,2048)*self.vres, np.linspace(1,2048,2048)*self.vres))/10/ np.cos(self.angle/360*2*np.pi)
         plt.figure()
         plt.pcolor(np.linspace(1,data.shape[1],data.shape[1]),vaxis_sort,data,vmin = 0, vmax = 500)
         plt.ylim([-300, 300])
@@ -53,9 +47,16 @@ class UAWOS_RSS_flight:
         lat_name = 'Latitude'
         lon_name = 'Longitude'
         alt_name = 'Altitude RTK'
-        RSS_data = pd.read_csv(self.name_RSSfile)
-        RSS_time = skyhubtime(RSS_data,'Date','Time')
         pos_data = pd.read_csv(self.name_posfile)
+        RSS_data = pd.read_csv(self.name_RSSfile)
+        if not self.RTK_on:
+            n_ppkfile = self.name_ppkfile
+            ppk_data = pd.read_csv(n_ppkfile,skiprows = 9,delimiter=r"\s+")
+            RSS_data = posinterp(RSS_data,ppk_data,'%','UTC','latitude(deg)','longitude(deg)', 'height(m)', False)
+            lat_name = 'Latitude_interpolated'
+            lon_name = 'Longitude_interpolated'
+            alt_name = 'Altitude_interpolated'
+        RSS_time = skyhubtime(RSS_data,'Date','Time')
         pos_time = skyhubtime(pos_data,'Date','Time')
         nwp_interp = np.interp(RSS_time.astype('float'),pos_time.astype('float'),pos_data['Next WP'])
         df = pd.DataFrame(np.array([RSS_data['Date'], RSS_data['Time'], RSS_data[lon_name], RSS_data[lat_name], RSS_data[alt_name], 
@@ -149,24 +150,10 @@ class UAWOS_RSS_flight:
         plt.show()
         
     def process_RSS_data(self):
-        cfreq = 24E9 #Hz, center frequency of the Doppler radar
-        spol = 3E8 # Speed of light in air, m/s
-        wlen = spol/cfreq # radar wavelength, m
-        print('Wavelength of Doppler radar in m:', wlen)
-        dshift = 2/wlen # 1/m, i.e. Hz/(m/s),i.e. Doppler shift per velocity
-        print('Doppler shift per unit speed in 1/m or Hz/(m/s): ', dshift)
-        vres = 7.3921 # mm/s velocity resolution of the Doppler radar, according to Geolux
-        specres = specres = vres/1000*dshift #spectral resolution of the Doppler radar
-        print('Spectral resolution of Doppler spectrum in Hz: ', specres)
-        vaxis = np.concatenate((np.linspace(1,2048,2048)*vres,np.linspace(-2048,-1,2048)*vres))
-        print('Velocity axis of the radar plot in mm/s: ', vaxis)
-        faxis = np.concatenate((np.linspace(1,2048,2048)*specres,np.linspace(-2048,-1,2048)*specres))
-        print('Frequency axis of the radar plot in Hz: ',faxis)
-        angle = 45 # 
         n_segyfile = self.name_segyfile
         data,headers, sample_rate, ntrace, nsamples = readsegy(n_segyfile)
         self.fwf_data =np.concatenate((data[2048:,:],data[0:2048,:]))
-        self.vaxis_sort = np.concatenate((np.linspace(-2048,-1,2048)*vres, np.linspace(1,2048,2048)*vres))/10/ np.cos(angle/360*2*np.pi)
+        self.vaxis_sort = np.concatenate((np.linspace(-2048,-1,2048)*self.vres, np.linspace(1,2048,2048)*self.vres))/10/ np.cos(self.angle/360*2*np.pi)
         self.waypoints = pd.read_excel(self.name_wpfile)
         self.waypoints["Cross section coordinate (m)"] = ""
         self.waypoints["RT Velocity"] = ""

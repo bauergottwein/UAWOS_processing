@@ -20,6 +20,9 @@ class UAWOS_ZAero_flight:
         print("UAWOS Zond Areo LF flight class constructor")
         for key, value in config_dict.items():
             setattr(self, key, value)
+        eps = 81 #relative permittivity of water
+        self.vwat = 3E8/eps**0.5
+        
             
     def process_WPR_flight(self,**kwargs):
         geoid_exists = kwargs.get('geoid_exists',True)
@@ -35,9 +38,9 @@ class UAWOS_ZAero_flight:
             n_ppkfile = self.name_ppkfile
             ppk_data = pd.read_csv(n_ppkfile,skiprows = 9,delimiter=r"\s+")
             pos_data = posinterp(pos_data,ppk_data,'%','UTC','latitude(deg)','longitude(deg)', 'height(m)', False)
-            lat_name = 'Latitude interpolated'
-            lon_name = 'Longitude interpolated'
-            alt_name = 'Altitude interpolated'
+            lat_name = 'Latitude_interpolated'
+            lon_name = 'Longitude_interpolated'
+            alt_name = 'Altitude_interpolated'
         df = pd.DataFrame(np.array([pos_data['Date'], pos_data['Time'], pos_data[lon_name], pos_data[lat_name], pos_data[alt_name], pos_data['ALT:Altitude'], pos_data['zGPR:Trace']]).transpose(), columns = ['Date','Time','Longitude','Latitude','Altitude WGS84','Altitude TTF','WPR Trace']) 
         df['geometry'] = df.apply(lambda x: Point((float(x.Longitude), float(x.Latitude))), axis=1)
         df = gpd.GeoDataFrame(df, geometry='geometry', crs = 4326)
@@ -102,12 +105,10 @@ class UAWOS_ZAero_flight:
             
     def process_WPR_data(self):
         fsize = 18
-        eps = 81 #relative permittivity of water
-        vwat = 3E8/eps**0.5
         sections = pd.read_excel(self.name_secfile,index_col = 'Section')
         pos_data = self.pos_data
         data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
-        ttorange = sample_rate*1E-9*vwat/2 #sampling rate in ns
+        ttorange = sample_rate*1E-9*self.vwat/2 #sampling rate in ns
         self.automatic_bathymetry_points = dict()
         for s in sections.index:
             starti = pos_data.loc[pos_data['WPR Trace'] == sections['Start Trace'][s]].index -1
@@ -270,10 +271,8 @@ class UAWOS_ZAero_flight:
         gain_ut = kwargs.get('gain_ut',3)
         gain_power = kwargs.get('gain_power',2)
         data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
+        ttorange = sample_rate*1E-9*self.vwat/2 #sampling rate in ns
         subdata = data[:,starttrace:endtrace+1]
-        eps = 81 #relative permittivity of water
-        vwat = 3E8/eps**0.5
-        ttorange = sample_rate*1E-9*vwat/2 #sampling rate in ns
         rangeax = np.linspace(1,nsamples,nsamples)*ttorange
         trax = np.linspace(0,subdata.shape[1]-1,subdata.shape[1])
         mdata = subdata.mean(1)
