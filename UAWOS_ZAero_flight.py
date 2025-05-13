@@ -245,7 +245,7 @@ class UAWOS_ZAero_flight:
         plt.plot(plt.gca().get_xlim(),[WSE,WSE],'b')
         plt.xlim(xlim)
         plt.xlabel('Distance along cross section, m',fontsize=fsize)
-        plt.ylabel('River bottom elevation, m',fontsize=fsize)
+        plt.ylabel('River bottom elevation, m above ' + self.z_EPSG,fontsize=fsize)
         plt.title(self.name_segyfile.split('\\')[-1] )
         plt.tick_params(labelsize=fsize)
         plt.legend(handles = labels,fontsize=fsize-3)
