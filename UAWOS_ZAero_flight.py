@@ -31,6 +31,7 @@ class UAWOS_ZAero_flight:
         dfref = pd.DataFrame(np.array([cl['geometry'].x,cl['geometry'].y,cl[self.chainage_field]]).transpose(), columns = ['Easting', 'Northing', 'Chainage'])
         n_posfile = self.name_posfile
         pos_data = pd.read_csv(n_posfile)
+        pos_data = pos_data.loc[~np.isnan(pos_data['zGPR:Trace'])]
         lat_name = 'Latitude RTK'
         lon_name = 'Longitude RTK'
         alt_name = 'Altitude RTK'
