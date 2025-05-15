@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import os
 from UAWOS_Utilities import readsegy, skyhubtime, raster_interp, hubdist, peakmodel1, peakmodel2, posinterp
-          
+import fiona
+from fiona.drvsupport import supported_drivers
+fiona.supported_drivers['KML'] = 'rw'
+supported_drivers['LIBKML'] = 'rw'
+
+
 class UAWOS_RSS_flight:
     def __init__(self, config_dict):
         print("UAWOS RSS flight class constructor")
@@ -51,7 +56,13 @@ class UAWOS_RSS_flight:
         RSS_data = pd.read_csv(self.name_RSSfile)
         if not self.RTK_on:
             n_ppkfile = self.name_ppkfile
-            ppk_data = pd.read_csv(n_ppkfile,skiprows = 9,delimiter=r"\s+")
+            # which ppk software used? RTKPOST skiprows = 22, Emlid = 9
+            with open(n_ppkfile, 'r') as f:
+                first_line = f.readline().strip()
+            if first_line == "% program   : RTKPOST ver.2.4.2" :
+                ppk_data = pd.read_csv(n_ppkfile,skiprows = 22,delimiter=r"\s+")
+            else:
+                ppk_data = pd.read_csv(n_ppkfile,skiprows = 9,delimiter=r"\s+")
             RSS_data = posinterp(RSS_data,ppk_data,'%','UTC','latitude(deg)','longitude(deg)', 'height(m)', False)
             lat_name = 'Latitude_interpolated'
             lon_name = 'Longitude_interpolated'
@@ -221,7 +232,7 @@ class UAWOS_RSS_flight:
                     self.waypoints.loc[w,'FW Velocity'] = popt[0]
                 elif self.waypoints['Fitting Model'][w]  == 'Double Peak':
                     p0 = [self.waypoints['m1'][w],self.waypoints['m2'][w],self.waypoints['s1'][w],
-                          self.waypoints['waypoints']['s2'][w],self.waypoints['f1'][w],self.waypoints['f2'][w]]
+                          self.waypoints['s2'][w],self.waypoints['f1'][w],self.waypoints['f2'][w]]
                     popt,pcov = curve_fit(peakmodel2, vax, subdata_m, p0=p0)
                     fdata = peakmodel2(vax,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5])
                     self.waypoints.loc[w,'FW Velocity'] = popt[0]
