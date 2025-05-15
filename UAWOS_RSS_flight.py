@@ -183,7 +183,7 @@ class UAWOS_RSS_flight:
         self.pcov = dict()
         self.fit_vax = dict()
         self.fit_data = dict()
-        for w in self.waypoints.index:
+        for wp_idx , w in enumerate(self.waypoints.index):
             subflight = self.RSS_data[np.logical_and(self.RSS_data['Trace'] > self.waypoints['Start Trace'][w], self.RSS_data['Trace'] < self.waypoints['End Trace'][w])]
             subdata = self.fwf_data[: , self.waypoints['Start Trace'][w] : self.waypoints['End Trace'][w] + 1]
             subdata_m = subdata.mean(1)
@@ -198,6 +198,7 @@ class UAWOS_RSS_flight:
             vax = vax[ind]
             subdata_m = subdata_m[ind]
             plt.figure()
+            plt.title('Waypoint' + str(wp_idx+1))
             plt.pcolor(np.linspace(1,subdata.shape[1],subdata.shape[1]),self.vaxis_sort,subdata,vmin = 0, vmax = 500)
             plt.ylim([-200, 200])
             plt.xlabel('Traces')
@@ -230,29 +231,46 @@ class UAWOS_RSS_flight:
                     popt,pcov = curve_fit(peakmodel1, vax, subdata_m, p0=p0)#,bounds=flight_dict ['Aux data']['pm2 bounds'])
                     fdata = peakmodel1(vax,popt[0],popt[1],popt[2])
                     self.waypoints.loc[w,'FW Velocity'] = popt[0]
+                    self.waypoints.loc[w,'Two Velocity together'] = np.nan
                 elif self.waypoints['Fitting Model'][w]  == 'Double Peak':
                     p0 = [self.waypoints['m1'][w],self.waypoints['m2'][w],self.waypoints['s1'][w],
                           self.waypoints['s2'][w],self.waypoints['f1'][w],self.waypoints['f2'][w]]
                     popt,pcov = curve_fit(peakmodel2, vax, subdata_m, p0=p0)
                     fdata = peakmodel2(vax,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5])
-                    self.waypoints.loc[w,'FW Velocity'] = popt[0]
+                    if self.waypoints['Direction'][w] == 1:
+                        FW_Velocity_flow = min(abs(popt[0]) , abs(popt[1]))
+                        FW_Velocity_drone = max(abs(popt[0]) , abs(popt[1]))
+                    else:
+                        FW_Velocity_flow = min(abs(popt[0]) , abs(popt[1]))
+                        FW_Velocity_drone = max(abs(popt[0]) , abs(popt[1]))
+                    self.waypoints.loc[w,'FW Velocity'] = FW_Velocity_flow
+                    self.waypoints.loc[w,'Two Velocity together'] = FW_Velocity_drone
                 plt.figure()
+                plt.title('Waypoint' + str(wp_idx+1))
                 plt.plot(vax,subdata_m,'k.')
                 plt.plot(vax,fdata,'r-')
                 plt.xlim(vlower,vupper)
                 plt.xlabel('Velocity, cm/s')
                 plt.ylabel('Return power')
-                plt.plot([popt[0],popt[0]],plt.gca().get_ylim())
-                if  self.waypoints['Fitting Model'][w] == 'Double peak':
-                    plt.plot([popt[1],popt[1]],plt.gca().get_ylim())
+                
+                if  self.waypoints['Fitting Model'][w] == 'Double Peak':
+                    plt.plot([popt[0],popt[0]],plt.gca().get_ylim(),color = 'r')
+                    plt.plot([popt[1],popt[1]],plt.gca().get_ylim(),color = 'b')
+                else:
+                    plt.plot([popt[0],popt[0]],plt.gca().get_ylim())
                 plt.show()
                 phi = sum((fdata-subdata_m)**2/len(fdata))**0.5
-                print(phi)
+                print('------------ Waypoint '+str(wp_idx+1)+'------------')
+                print('Phi='+str(phi))
+                if  self.waypoints['Fitting Model'][w] == 'Double Peak':
+                    print('Vel_1='+str(popt[0]))
+                    print('Vel_2='+str(popt[1]))
+                else:
+                    print('Vel='+str(popt[0]))
             self.popt[w]= popt
             self.pcov[w]= pcov
             self.fit_vax[w] = vax
             self.fit_data[w] = subdata_m
-            
         return self
     
     def plot_RSS_res(self):
@@ -282,8 +300,9 @@ class UAWOS_RSS_flight:
         XS_L3 = XS_L3.rename(columns={
             'RT Velocity': 'Velocity raw cm/s', 
             "FW Velocity": "Velocity full waveform data cm/s",
+            "Two Velocity together": "Two Velocity together cm/s",
             })
-        XS_L3 = XS_L3[['Time stamp','Easting.' + self.xy_EPSG + ' (m)', 'Northing.' + self.xy_EPSG + ' (m)', 'Altitude.' + self.z_EPSG + ' (m)', 'Cross section coordinate (m)', 'Velocity raw cm/s',"Velocity full waveform data cm/s" ]]
+        XS_L3 = XS_L3[['Time stamp','Easting.' + self.xy_EPSG + ' (m)', 'Northing.' + self.xy_EPSG + ' (m)', 'Altitude.' + self.z_EPSG + ' (m)', 'Cross section coordinate (m)','Direction','Velocity raw cm/s',"Velocity full waveform data cm/s","Two Velocity together cm/s" ]]
         XS_L3 = XS_L3.rename(columns={
             'Time stamp': 'Time stamp (UTC)',
             })
