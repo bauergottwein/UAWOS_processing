@@ -10,8 +10,8 @@ sys.path.append(r'C:\Users\ge86naf\OneDrive\UAWOS\code processing\uawos_processi
 from UAWOS_RSS_flight import UAWOS_RSS_flight
 
 # %%
-my_path = r'C:\Users\ge86naf\OneDrive\UAWOS\aferica\data_processing\Oueme_dataset\Doppler_radar_velocimetry_M300_RSS300\Level_1\8'
-xsname = '2025-05-09-12-12-50'
+my_path = r'C:\Users\ge86naf\OneDrive\UAWOS\aferica\data_processing\Oueme_dataset\Doppler_radar_velocimetry_M300_RSS300\Level_1\18'
+xsname = '2025-05-08-09-32-12'
 Orco_general_attributes = dict()
 
 Orco_general_attributes['xy_EPSG'] = 'EPSG:32631'
@@ -41,9 +41,11 @@ Orco_1.visualize_radargram()
 #%%
 Orco_1 = Orco_1.process_RSS_flight()
 #%%
+%matplotlib qt
 Orco_1.plot_Alt_XScoord_vs_Tnum()
 Orco_1.plot_WP_XScoord_vs_Tnum()
 #%%
+%matplotlib inline
 #Orco_1.make_WPfile()
 Orco_1.plot_WPdata()
 #%%
