@@ -158,6 +158,7 @@ class UAWOS_ZAero_flight:
             plt.figure()
             plt.pcolor(gndata, vmin=np.percentile(gndata, 0.05),vmax=np.percentile(gndata, 99.9))
             plt.plot(idx, 'r.')
+            plt.xlim(-10 , gndata.shape[1]+10)
             points_prof = plt.ginput(-1, timeout=-1, show_clicks=True,mouse_add=3, mouse_pop=1, mouse_stop=2)
             points_prof = np.array(points_prof)
             points_prof[0, 0] = 0
@@ -198,6 +199,7 @@ class UAWOS_ZAero_flight:
             points_prof[:, 1] = np.around(points_prof[:, 1], 4)
             plt.plot(points_prof[:, 0], points_prof[:, 1], 'r.')
             # manual updating by picking
+            plt.xlim(-10 , gndata.shape[1]+10)
             print('Please manual updating by right-clicking your mouse, and clicking the middle for the ending:')
             points_surf = plt.ginput(-1, timeout=-1, show_clicks=True,mouse_add=3, mouse_pop=1, mouse_stop=2)
             points_manu = np.array(points_surf)
