@@ -23,7 +23,6 @@ Orco_1_attributes['name_RSSfile'] = my_path + os.sep + '2025-04-10-13-54-21-GEOL
 Orco_1_attributes['name_segyfile'] = my_path + os.sep + '2025-04-10-13-54-21-GEOLUXRSS.sgy'
 Orco_1_attributes['name_wpfile'] = my_path + os.sep + '2025-04-10-13-54-21-waypoints.xlsx'# This will be created during preprocessing, pls see below
 Orco_1_attributes['name_ppkfile'] = r''# if RTK was off during flight, the path to a corresponding ppk file that contains the relevant time stamp range can be provided here
-Orco_1_attributes['ppk_skiprows'] = 9 # number of header lines to be skipped in ppk file. This is 9 for Emlid flow output
 Orco_1_attributes['in_situ_L3'] = r''
 Orco_1_attributes['refline_file'] = my_path + os.sep + 'chain_XSline_Cavour_utm.shp'
 Orco_1_attributes['RTK_on'] = True
@@ -43,7 +42,7 @@ Orco_1.plot_Alt_XScoord_vs_Tnum()
 Orco_1.plot_WP_XScoord_vs_Tnum()
 #%%
 %matplotlib inline
-#Orco_1.make_WPfile()
+Orco_1.make_WPfile()
 Orco_1.plot_WPdata()
 #%%
 Orco_1.process_RSS_data()
