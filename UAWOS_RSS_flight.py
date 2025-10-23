@@ -46,7 +46,7 @@ class UAWOS_RSS_flight:
         self.skyhub_filtvel_item = 'RSS:Velocity filtered'
         self.skyhub_tilt_item = 'RSS:Tilt'
         self.skyhub_trace_item = 'RSS:Trace'
-        self.skyhub_dir_item = 'RSS:Direction'
+        self.skyhub_dir_item = 'RSS:Direction' #1 incoming, -1 outgoing
         self.skyhub_RTKstatus_item = 'RTK Status'
         self.skyhub_RTKstatus_onstring = 'ON'
         # Waypoint file
@@ -54,11 +54,11 @@ class UAWOS_RSS_flight:
         self.WPfile_WP_item = 'Waypoint'
         self.WPfile_StartTrace_item = 'Start Trace'
         self.WPfile_EndTrace_item = 'End Trace'
-        self.WPfile_flightalt_item = 'Flight Altitude'
+        self.WPfile_flightalt_item = 'Flight Altitude (m)'
         self.WPfile_Direction_item = 'Direction'
-        self.WPfile_vupper_item = 'v upper'
-        self.WPfile_vlower_item = 'v lower'
-        self.WPfile_vmask_item = 'v mask'
+        self.WPfile_vupper_item = 'v upper (cm/s)'
+        self.WPfile_vlower_item = 'v lower (cm/s)'
+        self.WPfile_vmask_item = 'v mask (cm/s)'
         self.WPfile_fmodel_item = 'Fitting Model'
         self.WPfile_m1_item = 'm1'
         self.WPfile_m2_item = 'm2'
@@ -90,16 +90,16 @@ class UAWOS_RSS_flight:
         self.ppk_alt_item = 'height(m)'
         # Output column names
         self.out_date_item = 'Date'
-        self.out_time_item = 'Time'
+        self.out_time_item = 'Time (UTC)'
         self.out_lon_item = 'Longitude WGS84'
         self.out_lat_item = 'Latitude WGS84'
         self.out_altwgs84_item = 'Altitude WGS84 (m)'
         self.out_altttf_item = 'Altitude TTF (m)'
         self.out_velraw_item = 'Velocity raw (m/s)'
-        self.out_velfilt_item = 'Velocity filtered'
-        self.out_tilt_item = 'Tilt'
+        self.out_velfilt_item = 'Velocity filtered (m/s)'
+        self.out_tilt_item = 'Tilt (deg)'
         self.out_trace_item = 'Trace'
-        self.out_dir_item = 'Direction'
+        self.out_dir_item = 'Direction' #1 incoming, -1 outgoing
         self.out_WP_item = self.skyhub_WPcol_name
         self.out_geoid_item = self.z_EPSG + ' (m)'
         self.out_alt_item = 'Altitude.' + self.z_EPSG + ' (m)'
@@ -113,6 +113,10 @@ class UAWOS_RSS_flight:
         self.isdata_surfvel_label_item = 'OTT MFPro'
         # Miscellaneous
         self.RTK_EPSG = 'EPSG:4326'
+        # Plot labels
+        self.vel_ax_label = 'Surface velocity, cm/s'
+        self.return_power_label = 'Return power'
+        self.trace_number_label = 'Trace number'
         
     def visualize_radargram(self):
         data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
@@ -121,8 +125,8 @@ class UAWOS_RSS_flight:
         plt.figure()
         plt.pcolor(np.linspace(1,data.shape[1],data.shape[1]),vaxis_sort,data,vmin = 0, vmax = 500)
         plt.ylim([-300, 300])
-        plt.xlabel('Traces')
-        plt.ylabel('Flow velocity, cm/s')
+        plt.xlabel(self.trace_number_label)
+        plt.ylabel(self.vel_ax_label)
         plt.show()
     
     def process_RSS_flight(self):
@@ -166,7 +170,7 @@ class UAWOS_RSS_flight:
         ax2 = ax1.twinx()
         ax2.plot(self.RSS_data[self.out_trace_item],self.RSS_data[self.out_alt_item],'r')
         ax1.plot(self.RSS_data[self.out_trace_item],self.RSS_data[self.out_Chainage_item])
-        ax1.set_xlabel('RSS Trace Number')
+        ax1.set_xlabel(self.trace_number_label)
         ax1.set_ylabel(self.out_Chainage_item)
         ax2.set_ylabel(self.out_Chainage_item)
 
@@ -175,7 +179,7 @@ class UAWOS_RSS_flight:
         ax2 = ax1.twinx()
         ax2.plot(self.RSS_data[self.out_trace_item],self.RSS_data[self.out_WP_item],'r')
         ax1.plot(self.RSS_data[self.out_trace_item],self.RSS_data[self.out_Chainage_item])
-        ax1.set_xlabel('RSS Trace Number')
+        ax1.set_xlabel(self.trace_number_label)
         ax1.set_ylabel(self.out_Chainage_item)
         ax2.set_ylabel(self.out_WP_item)
         
@@ -248,7 +252,7 @@ class UAWOS_RSS_flight:
         plt.plot(self.RSS_data[self.out_trace_item],self.RSS_data[self.out_Chainage_item])
         plt.plot(wpdata[self.WPfile_StartTrace_item],wpdata[self.out_Chainage_item], 'k.',markersize = 10)
         plt.plot(wpdata[self.WPfile_EndTrace_item],wpdata[self.out_Chainage_item], 'g.', markersize = 10)
-        plt.xlabel('RSS Trace Number')
+        plt.xlabel(self.trace_number_label)
         plt.ylabel(self.out_Chainage_item)
         plt.show()
         
@@ -296,8 +300,8 @@ class UAWOS_RSS_flight:
             plt.title('Waypoint' + str(wp_idx+1))
             plt.pcolor(np.linspace(1,subdata.shape[1],subdata.shape[1]),self.vaxis_sort,subdata,vmin = vmin_plot, vmax = vmax_plot)
             plt.ylim([ymin_plot, ymax_plot])
-            plt.xlabel('Traces')
-            plt.ylabel('Flow velocity, cm/s')
+            plt.xlabel(self.trace_number_label)
+            plt.ylabel(self.vel_ax_label)
             self.waypoints.loc[w, self.out_Chainage_item] = subflight[self.out_Chainage_item].values.mean()
             self.waypoints.loc[w, self.out_Easting_item] = subflight[self.out_Easting_item].values.mean()
             self.waypoints.loc[w, self.out_Northing_item] = subflight[self.out_Northing_item].values.mean()
@@ -345,8 +349,8 @@ class UAWOS_RSS_flight:
                 plt.plot(vax,subdata_m,'k.')
                 plt.plot(vax,fdata,'r-')
                 plt.xlim(vlower,vupper)
-                plt.xlabel('Velocity, cm/s')
-                plt.ylabel('Return power')
+                plt.xlabel(self.vel_ax_label)
+                plt.ylabel(self.return_power_label)
                 if  self.waypoints[self.WPfile_fmodel_item][w] == 'Double Peak':
                     plt.plot([popt[0],popt[0]],plt.gca().get_ylim(),color = 'r')
                     plt.plot([popt[1],popt[1]],plt.gca().get_ylim(),color = 'b')
@@ -357,8 +361,8 @@ class UAWOS_RSS_flight:
                 print('------------ Waypoint '+str(wp_idx+1)+'------------')
                 print('Phi='+str(phi))
                 if  self.waypoints[self.WPfile_fmodel_item][w] == 'Double Peak':
-                    print('Vel_1='+str(popt[0]))
-                    print('Vel_2='+str(popt[1]))
+                    print('Velocity 1='+str(popt[0]))
+                    print('Velocity 2='+str(popt[1]))
                 else:
                     print('Vel='+str(popt[0]))           
         return self
@@ -369,19 +373,11 @@ class UAWOS_RSS_flight:
             is_data = pd.read_csv(self.in_situ_L3)
             l1, = plt.plot(is_data[self.out_Chainage_item],is_data[self.isdata_surfvel_item],'r*',label=self.isdata_surfvel_label_item)
             labels.append(l1)
-        XS_L3 = self.waypoints
-        colcodes = ['k','b','g']
-        fa = np.unique(XS_L3['Flight Altitude'])
-        count = 0
-        for faa in fa:
-            plotpoints = XS_L3[XS_L3[self.WPfile_flightalt_item]==faa]
-            #l2= plt.errorbar(plotpoints['Distance'],plotpoints['Velocity_fwd min'],yerr=(plotpoints['Velocity_fwd min_cov'].values)**0.5,linestyle='',marker='d',color=colcodes[count],label='Flight altitude ' + str(faa) +' m')
-            l2,= plt.plot(plotpoints[self.out_Chainage_item],plotpoints[self.WPfile_FWvel_item],linestyle='',marker='d',color=colcodes[count],label='Flight altitude ' + str(faa) +' m')
-            labels.append(l2)
-            count = count+1
+        l2,= plt.plot(self.waypoints[self.out_Chainage_item],self.waypoints[self.WPfile_FWvel_item],linestyle='',marker='+', color='black',label='RSS')
+        labels.append(l2)
         plt.legend(handles = labels)
         plt.xlabel(self.out_Chainage_item)
-        plt.ylabel('Surface velocity, cm/s')
+        plt.ylabel(self.vel_ax_label)
         plt.title(self.name_segyfile.split('\\')[-1] )
         
     def L2_L3_generation(self):
