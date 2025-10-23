@@ -29,14 +29,22 @@ class UAWOS_LX80_flight:
         self.corrfac = 1.1469
         # Column names in various input files - adjust if format changes
         # Skyhub files
+        self.skyhub_SensID_name = 'Sensor ID'
         self.skyhub_RTK_Alt_name = 'Altitude RTK'
         self.skyhub_RTK_Lat_name = 'Latitude RTK'
+        self.skyhub_Lat_name = 'Latitude'
         self.skyhub_RTK_Lon_name = 'Longitude RTK'
+        self.skyhub_Lon_name = 'Longitude'
         self.skyhub_LX_distance_name = 'LX:Distance'
         self.skyhub_date_name = 'Date'
         self.skyhub_time_name = 'Time' # assumed to be UTC
         self.skyhub_RTKstatus_item = 'RTK Status'
         self.skyhub_RTKstatus_onstring = 'ON'
+        self.skyhub_Heading_item = 'Heading'
+        self.skyhub_Temp_item = 'LX:Temperature'
+        self.skyhub_SNR_item ='LX:SNR'
+        self.skyhub_SD_item ='LX:SD'
+        self.skyhub_trace_item ='LX:Trace'
         # Waypoint file
         self.skyhub_WPcol_name = 'Next WP'
         self.WPfile_WP_item = 'Waypoint'
@@ -73,21 +81,28 @@ class UAWOS_LX80_flight:
         self.out_DistfromCline_item  = 'Distance from centerline (m)'
         # Miscellaneous
         self.RTK_EPSG = 'EPSG:4326'
+        # Plot labels
+        self.RTKelev_label = 'RTK Elevation, m above WGS84'
+        self.sample_number_label = 'Sample number'
+        self.habovewater_label = 'Height above water (m)'
+        self.radrange_label ='Radar range (m)'
+        self.radrange_corr_label ='corrected Radar range (m)'
+        self.rtkrange_label ='RTK range (m)'
     
     def plot_Alt_RTK_vs_sample_no(self,**kwargs):
         data = pd.read_csv(self.name_LX80file)
         plt.figure()
         plt.plot(data.index, data[self.skyhub_RTK_Alt_name])
-        plt.xlabel('Sample No')
-        plt.ylabel('RTK Elevation, m above WGS84')
+        plt.xlabel(self.sample_number_label)
+        plt.ylabel(self.RTKelev_label)
         plt.show()
         
     def plot_Alt_RTK_minus_range_vs_sample_no(self,**kwargs):
         data = pd.read_csv(self.name_LX80file)
         plt.figure()
         plt.plot(data.index, data[self.skyhub_RTK_Alt_name]-data[self.skyhub_LX_distance_name])
-        plt.xlabel('Sample No')
-        plt.ylabel('RTK Elevation, m above WGS84')
+        plt.xlabel(self.sample_number_label)
+        plt.ylabel(self.RTKelev_label)
         y_lower = kwargs.get('y_lower',plt.gca().get_ylim()[0])
         y_upper = kwargs.get('y_upper',plt.gca().get_ylim()[1])
         plt.ylim([y_lower,y_upper])
@@ -122,8 +137,8 @@ class UAWOS_LX80_flight:
         plt.plot(data.index,data[self.skyhub_RTK_Alt_name] - self.True_WSE_WGS84 - self.offset_RTK_LX80)
         plt.plot(wpdata[self.WPfile_StartSample_item],wpdata[self.WPfile_HaboveWater_RTK_item], 'k.',markersize = 10)
         plt.plot(wpdata[self.WPfile_EndSample_item],wpdata[self.WPfile_HaboveWater_RTK_item], 'g.', markersize = 10)
-        plt.xlabel('LX80 Sample Number')
-        plt.ylabel('Height above water (m)')
+        plt.xlabel(self.sample_number_label)
+        plt.ylabel(self.habovewater_label)
         plt.show()
         
     def show_range_corr(self):
@@ -131,8 +146,8 @@ class UAWOS_LX80_flight:
         plt.figure()
         plt.plot(wpdata[self.WPfile_HaboveWater_LX80_item],wpdata[self.WPfile_HaboveWater_RTK_item],'.')
         plt.plot(plt.gca().get_xlim(),plt.gca().get_xlim(),'-')
-        plt.xlabel('Radar range (m)')
-        plt.ylabel('RTK range (m)')
+        plt.xlabel(self.radrange_label)
+        plt.ylabel(self.rtkrange_label)
         plt.show()
         
     def calibrate_LX80(self):
@@ -145,8 +160,8 @@ class UAWOS_LX80_flight:
         plt.figure()
         plt.plot(scalef*wpdata[self.WPfile_HaboveWater_LX80_item],wpdata[self.WPfile_HaboveWater_RTK_item],'.')
         plt.plot(plt.gca().get_xlim(),plt.gca().get_xlim(),'-')
-        plt.xlabel('corrected Radar range (m)')
-        plt.ylabel('RTK range (m)')
+        plt.xlabel(self.radrange_corr_label)
+        plt.ylabel(self.rtkrange_label)
         plt.show()
         self.range_cal_fac = regi.coef_[0][0]
         return self
@@ -156,7 +171,8 @@ class UAWOS_LX80_flight:
         # Adjustable input
         #***************************************************************************** 
         range_upper_bound = 100.
-        dropcol_list = ['Sensor ID','Latitude','Longitude','Heading','LX:Temperature','LX:SNR','LX:SD','LX:Trace'] # columns to be dropped from final output
+        dropcol_list = [self.skyhub_SensID_name, self.skyhub_Lat_name, self.skyhub_Lon_name, self.skyhub_Heading_item, self.skyhub_Temp_item,
+                        self.skyhub_SNR_item, self.skyhub_SD_item, self.skyhub_trace_item] # columns to be dropped from final output
         #***************************************************************************** 
         cl = gpd.read_file(self.chainage_file)
         cl = cl.to_crs(crs=self.xy_EPSG)
@@ -203,8 +219,8 @@ class UAWOS_LX80_flight:
         plt.figure()
         plt.plot(self.processed_data[self.out_Chainage_item],self.processed_data[self.out_WSE_item],'k.',markersize = 0.3)
         plt.ylim(self.ylim)
-        plt.xlabel('chainage, m')
-        plt.ylabel('WSE, m above ' + self.z_EPSG)
+        plt.xlabel(self.out_Chainage_item)
+        plt.ylabel(self.out_WSE_item)
         plt.title(self.name_LX80file.split('\\')[-1] )
         plt.show()
        
@@ -226,7 +242,7 @@ class UAWOS_LX80_flight:
         plt.figure()
         plt.pcolor(XXv,YYv,ll,vmin = 0, vmax = 100)
         plt.ylim(-1,40)
-        plt.xlabel('traces')
-        plt.ylabel('Range, m')
+        plt.xlabel(self.sample_number_label)
+        plt.ylabel(self.radrange_label)
         plt.show()
         
