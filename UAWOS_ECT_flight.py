@@ -52,7 +52,7 @@ class UAWOS_ECT_flight:
         self.ppk_alt_item = 'height(m)'
         # Output column names
         self.out_date_item = 'Date'
-        self.out_time_item = 'Time'
+        self.out_time_item = 'Time (UTC)'
         self.out_lon_item = 'Longitude WGS84'
         self.out_lat_item = 'Latitude WGS84'
         self.out_altwgs84_item = 'Altitude WGS84 (m)'
@@ -69,12 +69,16 @@ class UAWOS_ECT_flight:
         self.out_DistfromCline_item  = 'Distance from reference line (m)'
         # Miscellaneous
         self.RTK_EPSG = 'EPSG:4326'
+        # Plot labels
+        self.rbe_label = 'River bottom elevation, m above ' + self.z_EPSG
+        self.sample_number_label = 'Sample number'
     
     def process_ECT(self,**kwargs):
         lat_name = kwargs.get('lat_name', self.skyhub_RTK_Lat_name)
         lon_name = kwargs.get('lon_name', self.skyhub_RTK_Lon_name)
         alt_name = kwargs.get('alt_name', self.skyhub_RTK_Alt_name)
         echo_data = pd.read_csv(self.name_posfile)
+        echo_data = echo_data.loc[self.Start_sample : self.End_sample]
         cl = gpd.read_file(self.refline_file)
         cl = cl.to_crs(crs=self.xy_EPSG)
         dfchain = pd.DataFrame(np.array([cl[self.shp_geometry_item].x,cl[self.shp_geometry_item].y,cl[self.chainage_field]]).transpose(), columns = [self.cdf_easting, self.cdf_northing, self.cdf_chainage])
@@ -110,10 +114,10 @@ class UAWOS_ECT_flight:
     def plot_Alt_Snum_vs_XS_coord(self):
         fig, ax1 = plt.subplots()
         ax2 = ax1.twinx()
-        ax2.plot(self.echo_data[self.out_Chainage_item],self.echo_data[self.out_alt_item],'r',label='Altitude')
-        ax1.plot(self.echo_data[self.out_Chainage_item],self.echo_data.index, label = 'Trace Number')
+        ax2.plot(self.echo_data[self.out_Chainage_item],self.echo_data[self.out_alt_item],'r',label=self.out_alt_item)
+        ax1.plot(self.echo_data[self.out_Chainage_item],self.echo_data.index, label = self.sample_number_label)
         ax1.set_xlabel(self.out_Chainage_item)
-        ax1.set_ylabel('ECT sample number')
+        ax1.set_ylabel(self.sample_number_label)
         ax2.set_ylabel(self.out_alt_item)
         
     def plot_XS_coord_Alt_vs_Snum(self):
@@ -121,7 +125,7 @@ class UAWOS_ECT_flight:
         ax2 = ax1.twinx()
         ax2.plot(self.echo_data.index,self.echo_data[self.out_alt_item],'r')
         ax1.plot(self.echo_data.index,self.echo_data[self.out_Chainage_item])
-        ax1.set_xlabel('ECT sample number')
+        ax1.set_xlabel(self.sample_number_label)
         ax1.set_ylabel(self.out_Chainage_item)
         ax2.set_ylabel(self.out_alt_item)
         
@@ -138,7 +142,7 @@ class UAWOS_ECT_flight:
         plt.figure()
         plt.plot(self.echo_data[self.out_Chainage_item],self.echo_data[self.out_botelev_item],'b.')
         plt.xlabel(self.out_Chainage_item)
-        plt.ylabel('River bottom elevation, m above ' + self.z_EPSG)
+        plt.ylabel(self.rbe_label)
         
     def save_L2_L3_data(self):
         L3_data = self.echo_data
