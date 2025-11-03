@@ -81,6 +81,8 @@ class UAWOS_ZAero_flight:
         self.range_ax_label = 'zGPR range, m'
         self.range_ax_time_label = 'zGPR range, bins'
         self.trace_number_label = 'Trace number'
+        # output file
+        self.outfile = self.name_segyfile.split('.')[0] + '_processed.csv'
         
             
     def process_WPR_flight(self,**kwargs):
@@ -325,7 +327,7 @@ class UAWOS_ZAero_flight:
         plt.tick_params(labelsize=fontsize_plot)
         plt.legend(handles = labels,fontsize=fontsize_plot-3)
         
-    def L2_L3_generation(self):
+    def output_generation(self):
         XS_L3_auto = self.automatic_bathymetry_points[1].head(0)
         XS_L3_auto[self.out_freq_item] = None
         XS_L3_auto[self.out_antdir_item] = None
@@ -337,9 +339,8 @@ class UAWOS_ZAero_flight:
             df[self.out_WSE_item] = self.WSE
             XS_L3_auto = pd.concat([XS_L3_auto, df], axis=0)
         XS_L3_auto = XS_L3_auto[XS_L3_auto[self.out_botelev_item].notna()]
-        XS_L3_auto.to_csv(self.L3_output, index = False)
-        XS_L2_auto=XS_L3_auto.drop(columns=[self.out_Chainage_item])
-        XS_L2_auto.to_csv(self.L2_output, index = False )
+        XS_L3_auto.to_csv(self.outfile, index = False)
+
         
     def field_test(self,starttrace, endtrace,**kwargs):
         gain_lt = kwargs.get('gain_lt',1)
