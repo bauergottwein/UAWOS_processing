@@ -45,16 +45,10 @@ Orco_1_attributes = Orco_general_attributes.copy()
 Orco_1_attributes['name_posfile'] = my_path + os.sep + '2025-04-08-12-53-22-position.csv'
 Orco_1_attributes['name_ppkfile'] = r'' # if RTK was off during flight, the path to a corresponding ppk file that contains the relevant time stamp range can be provided here
 Orco_1_attributes['name_LX80file'] = my_path + os.sep + '2025-04-08-12-53-22-GEOLUXLX80.csv'
-Orco_1_attributes['L2_output'] = my_path + os.sep + r'Level_2\2025-04-08-12-53-22.csv'
-Orco_1_attributes['L3_output'] = my_path + os.sep + r'Level_3\2025-04-08-12-53-22.csv'
 Orco_1_attributes['RTK_on'] = True
 Orco_1_attributes['ylim'] = [184,191]
 Orco_1_attributes['CL_dist_threshold'] = 100 # this is the threshold used to discard points, i.e. any point further than this from the centerline is discarded.
 
 Orco_1 = UAWOS_LX80_flight(Orco_1_attributes)
-if not os.path.exists(my_path + os.sep + 'Level_2'):
-    os.makedirs(my_path + os.sep + 'Level_2')
-if not os.path.exists(my_path + os.sep + 'Level_3'):
-    os.makedirs(my_path + os.sep + 'Level_3')
 Orco_1 = Orco_1.process_LX80()
 Orco_1.plot_LX80_processed()

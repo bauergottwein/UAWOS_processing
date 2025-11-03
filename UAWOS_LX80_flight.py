@@ -88,6 +88,9 @@ class UAWOS_LX80_flight:
         self.radrange_label ='Radar range (m)'
         self.radrange_corr_label ='corrected Radar range (m)'
         self.rtkrange_label ='RTK range (m)'
+        
+        # output file
+        self.outfile = self.name_LX80file.split('.')[0] + '_processed.csv'
     
     def plot_Alt_RTK_vs_sample_no(self,**kwargs):
         data = pd.read_csv(self.name_LX80file)
@@ -210,9 +213,7 @@ class UAWOS_LX80_flight:
                             Hubs_out = self.out_Chainage_item, Distance_Hubs_out = self.out_DistfromCline_item, Easting_hubs = self.cdf_easting, 
                             Northing_hubs = self.cdf_northing)
         self.processed_data = data_lx80
-        self.processed_data.to_csv(self.L3_output,index = False)
-        l2out = self.processed_data.drop(columns = [self.out_Chainage_item, self.out_DistfromCline_item])
-        l2out.to_csv(self.L2_output,index = False)
+        self.processed_data.to_csv(self.outfile,index = False)
         return self
         
     def plot_LX80_processed(self):
