@@ -47,13 +47,13 @@ Dependencies:
 # %%
 import os
 import sys
-sys.path.append(r'C:\Users\ge86naf\OneDrive\UAWOS\code processing\uawos_processing\UAWOS_processing')
+sys.path.append(r'h:\UAWOS\uawos_data_processing\revision_11_25')
 from UAWOS_Discharge import UAWOS_Discharge
 
 # %% General attributes
 
 general_attributes = dict()
-general_attributes['project_path'] = r'h:\UAWOS\uawos_data_processing\revision_10_25\Discharge_processing_example'
+general_attributes['project_path'] = r'h:\UAWOS\uawos_data_processing\revision_11_25\Discharge_processing_example'
 general_attributes['XSid'] = 'Po2' # index of calculated cross section
 general_attributes['xy_EPSG'] = 'EPSG:3006'
 general_attributes['z_EPSG'] = 'EPSG:5613'
@@ -62,7 +62,7 @@ general_attributes['dx'] = 1 # Width of water coulmn
 # %% Calculation attributes
 
 cal_attributes = general_attributes.copy()
-cal_attributes['resultpath'] = general_attributes['project_path'] + os.sep + 'Results'
+cal_attributes['resultpath'] = general_attributes['project_path'] + os.sep + 'result'
 cal_attributes['velocity'] = general_attributes['project_path'] + os.sep + 'XSpo2_forQ.csv'
 cal_attributes['bathymetry'] = general_attributes['project_path'] + os.sep + 'XSpo2.csv'
 cal_attributes['full_geometry'] =general_attributes['project_path'] + os.sep + 'XSpo2_processed.csv'
