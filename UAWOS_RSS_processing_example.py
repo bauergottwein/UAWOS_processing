@@ -27,9 +27,6 @@ Orco_1_attributes['in_situ_L3'] = r''
 Orco_1_attributes['refline_file'] = my_path + os.sep + 'chain_XSline_Cavour_utm.shp'
 Orco_1_attributes['RTK_on'] = True
 Orco_1_attributes['CL_dist_threshold'] = 100 
-Orco_1_attributes['L2_output'] = my_path + os.sep + r'Level_2\2025-04-10-13-54-21.csv'
-Orco_1_attributes['L3_output'] = my_path + os.sep + r'Level_3\2025-04-10-13-54-21.csv'
-
 
 Orco_1 = UAWOS_RSS_flight(Orco_1_attributes)
 #%%
@@ -49,8 +46,4 @@ Orco_1.process_RSS_data()
 #%%
 Orco_1.plot_RSS_res()
 #%%
-if not os.path.exists(my_path + os.sep + 'Level_2'):
-    os.makedirs(my_path + os.sep + 'Level_2')
-if not os.path.exists(my_path + os.sep + 'Level_3'):
-    os.makedirs(my_path + os.sep + 'Level_3')
-Orco_1.L2_L3_generation()
+Orco_1.output_generation()

@@ -117,6 +117,8 @@ class UAWOS_RSS_flight:
         self.vel_ax_label = 'Surface velocity, cm/s'
         self.return_power_label = 'Return power'
         self.trace_number_label = 'Trace number'
+        # output file
+        self.outfile = self.name_RSSfile.split('.')[0] + '_processed.csv'
         
     def visualize_radargram(self):
         data,headers, sample_rate, ntrace, nsamples = readsegy(self.name_segyfile)
@@ -380,11 +382,9 @@ class UAWOS_RSS_flight:
         plt.ylabel(self.vel_ax_label)
         plt.title(self.name_segyfile.split('\\')[-1] )
         
-    def L2_L3_generation(self):
+    def output_generation(self):
         XS_L3 = self.waypoints
         XS_L3=XS_L3.drop(columns=[self.WPfile_StartTrace_item, self.WPfile_EndTrace_item, self.WPfile_m1_item, self.WPfile_m2_item,
                                   self.WPfile_s1_item, self.WPfile_s2_item, self.WPfile_f1_item, self.WPfile_f2_item, self.WPfile_f2_item, self.WPfile_flightalt_item,
                                   self.WPfile_popt_item, self.WPfile_pcov_item, self.WPfile_fit_vax_item, self.WPfile_fit_data_item])
-        XS_L3.to_csv(self.L3_output )
-        XS_L2=XS_L3.drop(columns=[self.out_Chainage_item])
-        XS_L2.to_csv(self.L2_output)
+        XS_L3.to_csv(self.outfile )
