@@ -72,6 +72,8 @@ class UAWOS_ECT_flight:
         # Plot labels
         self.rbe_label = 'River bottom elevation, m above ' + self.z_EPSG
         self.sample_number_label = 'Sample number'
+        # output file
+        self.outfile = self.name_posfile.split('.')[0] + '_processed.csv'
     
     def process_ECT(self,**kwargs):
         lat_name = kwargs.get('lat_name', self.skyhub_RTK_Lat_name)
@@ -144,18 +146,17 @@ class UAWOS_ECT_flight:
         plt.xlabel(self.out_Chainage_item)
         plt.ylabel(self.rbe_label)
         
-    def save_L2_L3_data(self):
+    def save_output_data(self):
         L3_data = self.echo_data
         L3_data = L3_data.drop(self.shp_geometry_item, axis=1)
-        L3_data.to_csv(self.L3_output,index = False)
-        L2_data = L3_data.drop([self.out_Chainage_item,self.out_DistfromCline_item], axis=1)
-        L2_data.to_csv(self.L2_output,index = False)
+        L3_data.to_csv(self.outfile,index = False)
+
         
     def plot_ECT_results(self,xlim):
         WSE = self.WSE
         if os.path.isfile(self.name_isfile):
             is_data = pd.read_csv(self.name_isfile)
-        L3_data = pd.read_csv(self.L3_output)
+        L3_data = pd.read_csv(self.outfile)
         plt.figure(figsize=(10,5))
         line1, = plt.plot(L3_data[self.out_Chainage_item], L3_data[self.out_botelev_item],'r.', label='L3 data',markersize=1)
         handles = [line1]

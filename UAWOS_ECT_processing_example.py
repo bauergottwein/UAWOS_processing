@@ -32,8 +32,6 @@ Torne_1_attributes['RTK_on'] = True
 Torne_1_attributes['Start_sample'] = 1870
 Torne_1_attributes['End_sample'] = 9600
 Torne_1_attributes['xlim'] = [-300,300]
-Torne_1_attributes['L2_output'] = my_path + os.sep + r'Level_2\2024-09-07-08-07-46-position.csv'
-Torne_1_attributes['L3_output'] = my_path + os.sep + r'Level_3\2024-09-07-08-07-46-position.csv'
 
 Torne_1 = UAWOS_ECT_flight(Torne_1_attributes)
 #%%
@@ -42,9 +40,5 @@ Torne_1.plot_Alt_Snum_vs_XS_coord()
 Torne_1.plot_XS_coord_Alt_vs_Snum()
 Torne_1.find_WSE()
 Torne_1.plot_XS()
-if not os.path.exists(my_path + os.sep + 'Level_2'):
-    os.makedirs(my_path + os.sep + 'Level_2')
-if not os.path.exists(my_path + os.sep + 'Level_3'):
-    os.makedirs(my_path + os.sep + 'Level_3')
-Torne_1.save_L2_L3_data()
+Torne_1.save_output_data()
 Torne_1.plot_ECT_results(Torne_1.xlim)
