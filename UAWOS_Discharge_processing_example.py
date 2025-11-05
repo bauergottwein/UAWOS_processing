@@ -3,7 +3,7 @@
 
 Title: UAWOS_Discharge_processing
 
-Author: Xinqi Hu, Zhen Zhou 11111
+Author: Xinqi Hu, Zhen Zhou
 Contact: xinqi.hu@tum.de
 
 Description:
@@ -47,13 +47,13 @@ Dependencies:
 # %%
 import os
 import sys
-sys.path.append(r'h:\UAWOS\uawos_data_processing\revision_11_25')
+sys.path.append(r'C:\Users\ge86naf\OneDrive\UAWOS\code processing\uawos_clean\uawos_tesy\UAWOS_processing')
 from UAWOS_Discharge import UAWOS_Discharge
 
 # %% General attributes
 
 general_attributes = dict()
-general_attributes['project_path'] = r'h:\UAWOS\uawos_data_processing\revision_11_25\Discharge_processing_example'
+general_attributes['project_path'] = r'C:\Users\ge86naf\OneDrive\UAWOS\code processing\uawos_processing\UAWOS_processing\Discharge_processing_example\Discharge_processing_example'
 general_attributes['XSid'] = 'Po2' # index of calculated cross section
 general_attributes['xy_EPSG'] = 'EPSG:3006'
 general_attributes['z_EPSG'] = 'EPSG:5613'
