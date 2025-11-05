@@ -34,13 +34,31 @@ class UAWOS_Discharge:
         self.size_T = 16 # Fontsize
         self.value_min = 1e-3 # minimum value for physical variables (avoid devided by 0 error)
         self.ks_x = np.linspace(1, 100.05, 50) # Range of stickler value, 1 - 100
-        self.velocity_index = 0.85 # velocity index used for 0.85 method
+        self.velocity_index = 0.85             # velocity index used for 0.85 method
+        
+        # WPR+DEM geometry file
+        self.column_to_be_droped_wpr = ["Time stamp (UTC)", 'Antenna direction']
+        self.cs_coordinate_column_wpr = 'Distance along reference line (m)'
+        self.geometry_profile_column_wpr = 'z.' + self.z_EPSG + ' (m)'
+        # -- bathymetry uncertainty parameters(optional)
+        self.whether_geo_std_calculated_wpr = True
+        self.geo_std_column_wpr = 'Std with 0.5 m interval (m)'
+        
+        # Doppler velocity file
+        self.time_column_v = 'Time'
+        self.rss_direction_column_v = 'RSS:Direction'
+        self.cs_coordinate_column_v = 'Distance along reference line (m)'
+        self.velocity_column_v = 'Two peak_full velocity (cm/s)'
+        # -- Velocity uncertainty parameters(optional)
+        self.whether_vel_std_calculated_v = True
+        self.vel_std_column_v = 'Std with 5 traces (cm/s)_two peak'
+        
         self.XS_info = {}
         self.XS_uncertainty = {}
         self.XS_uncertainty_L2 = {}
-        self.XS_uncertainty_contribution = {}
         if self.resultpath and not os.path.exists(self.resultpath):
             os.makedirs(self.resultpath)
+   
     # --------- Main structure ---------- #    
     def process_Discharge(self):
         self.data_import()
@@ -54,18 +72,19 @@ class UAWOS_Discharge:
     def data_import(self):
         self.full_geometry_import()
         self.velocity_import()
-        self._plot_geometry()
         
     def model_run(self):
         if self.if_calc_uncertainty == True:
-            self.processDischarge()
-            self.uncertainty_sample()
-            self.processDischarge_sigma()
+            if not (self.whether_geo_std_calculated_wpr) or not (self.whether_geo_std_calculated_wpr):
+                print(" Uncertainty information from Doppler or WPR is not provided!")
+            else:
+                self.processDischarge()
+                self.uncertainty_sample()
+                self.processDischarge_sigma()
         else:
             self.processDischarge()
             
     def model_export(self):
-        self.logo_path = self._find_logo()
         self.generate_report()
 
 #==============================================================================#
@@ -94,11 +113,11 @@ class UAWOS_Discharge:
 #==============================================================================#
 #==============================================================================#
 #==============================================================================# 
-
+    
      # --------- Model preprocessing ---------- #
     def full_geometry_import(self):
-        bdata = pd.read_csv(self.full_geometry).groupby('Distance along reference line (m)', as_index=False).mean()
-        self.bcs = make_interp_spline(bdata['Distance along reference line (m)'], bdata['z.' + self.z_EPSG + ' (m)'],k=1)
+        bdata = pd.read_csv(self.full_geometry).groupby( self.cs_coordinate_column_wpr , as_index=False).mean()
+        self.bcs = make_interp_spline(bdata[self.cs_coordinate_column_wpr], bdata[self.geometry_profile_column_wpr],k=1)
         bcs = self.bcs
         helpfunc = lambda bx: ( bcs(bx)-self.WSE )
         b_xaix = np.linspace(self.lbguess-5 , self.rbguess+5 , 1500)
@@ -118,46 +137,54 @@ class UAWOS_Discharge:
         
     def velocity_import(self):
         vdata = pd.read_csv(self.velocity)
-        vdata =vdata.drop(columns=['Time'])
-        vdata = vdata.loc[vdata['RSS:Direction'] == -1]
-        vdata['Surface velocity (cm/s)']=abs(vdata['Two peak_full velocity (cm/s)'])
-        vdata= vdata.groupby(['Distance along reference line (m)'],as_index=False).mean()
-        vdatax= np.array(vdata['Distance along reference line (m)'])
-        vdatax = np.insert(vdatax , 0 , self.lb)
-        vdatax = np.insert(vdatax , len(vdatax) , self.rb)
+        vdata =vdata.drop(columns=[ self.time_column_v ])
+        vdata = vdata.loc[vdata[ self.rss_direction_column_v ] == -1]
+        vdata['Surface velocity (cm/s)']=abs(vdata[ self.velocity_column_v ])
+        vdata= vdata.groupby([ self.cs_coordinate_column_v ],as_index=False).mean()
+        vdatax= np.array(vdata[ self.cs_coordinate_column_v ])
+        vdatax = np.insert(vdatax , 0 , self.lb) # 0 velocity at the land-water boundary
+        vdatax = np.insert(vdatax , len(vdatax) , self.rb) 
         vdatay= np.array(vdata['Surface velocity (cm/s)'])
-        vstdy = np.array(vdata['Std with 5 traces (cm/s)_two peak'])
-        
         vdatay = np.insert(vdatay ,0,0)
         vdatay = np.insert(vdatay , len(vdatay) ,0)
-        vstdy = np.insert(vstdy ,0,0)
-        vstdy = np.insert(vstdy , len(vstdy) ,0)
-        
         self.vcs = make_interp_spline( vdatax , vdatay , k=1)
-        self.vcs_std  = make_interp_spline(vdatax , vstdy , k=1)
+        
+        if self.whether_vel_std_calculated_v:
+            vstdy = np.array(vdata[self.vel_std_column_v])
+            vstdy = np.insert(vstdy ,0,0)
+            vstdy = np.insert(vstdy , len(vstdy) ,0)
+            self.vcs_std  = make_interp_spline(vdatax , vstdy , k=1)
         
     def uncertainty_sample(self):
-        bdata = pd.read_csv(self.full_geometry).groupby('Distance along reference line (m)', as_index=False).mean()
-        bdata_L3 = pd.read_csv(self.bathymetry).drop(columns=["Time stamp (UTC)", 'Antenna direction']).groupby(["Distance along reference line (m)"], as_index=False).mean()
-        bdata['std'] = 0.0
-        L3_std_map = dict(zip(bdata_L3['Distance along reference line (m)'], bdata_L3['Std with 0.5 m interval (m)']))
-        bdata['std'] = bdata['Distance along reference line (m)'].map(L3_std_map).fillna(0)
-        self.bcs_std  = make_interp_spline(bdata['Distance along reference line (m)'] , bdata['std'] ,k=1)
         x_values = np.linspace(self.lb, self.rb, self.npoints)
-        bcs_samples = self.bcs(x_values)
-        vcs_samples = self.vcs(x_values)
-        bcs_std_samples = self.bcs_std(x_values)
-        vcs_std_samples = self.vcs_std(x_values)
-        nominal_wpr = bcs_samples
-        wpr_err = np.array(bcs_std_samples)
-        nominal_doppler = vcs_samples
-        doppler_err = np.array( vcs_std_samples )
+        if self.whether_geo_std_calculated_wpr:
+            bdata = pd.read_csv(self.full_geometry).groupby(self.cs_coordinate_column_wpr, as_index=False).mean()
+            bdata_L3 = pd.read_csv(self.bathymetry).drop(columns=self.column_to_be_droped_wpr).groupby([self.cs_coordinate_column_wpr], as_index=False).mean()
+            bdata['std'] = 0.0
+            L3_std_map = dict(zip(bdata_L3[self.cs_coordinate_column_wpr], bdata_L3[self.geo_std_column_wpr]))
+            bdata['std'] = bdata[self.cs_coordinate_column_wpr].map(L3_std_map).fillna(0)
+            self.bcs_std  = make_interp_spline(bdata[self.cs_coordinate_column_wpr] , bdata['std'] ,k=1)
+            bcs_samples = self.bcs(x_values)
+            bcs_std_samples = self.bcs_std(x_values)
+            nominal_wpr = bcs_samples
+            wpr_err = np.array(bcs_std_samples)
+            self.wpr_samples     = self._sample_field(nominal_wpr , wpr_err , self.sample_size)
+        else:
+            print("Uncertainty parameters are missing in the WPR Level3 input file, uncertainty calculation cannot be performed!")
+            
+        if self.whether_vel_std_calculated_v:
+            vcs_samples = self.vcs(x_values)
+            vcs_std_samples = self.vcs_std(x_values)
+            nominal_doppler = vcs_samples
+            doppler_err = np.array( vcs_std_samples )
+            self.doppler_samples = self._sample_field(nominal_doppler , doppler_err , self.sample_size)
+        else:
+            print("Uncertainty parameters are missing in the Doppler Level3 input file, uncertainty calculation cannot be performed!")
+        
         nominal_wse = self.WSE
         nominal_wse = np.full_like(np.array(nominal_wpr), nominal_wse)
         nominal_wss = self.WSS
         nominal_wss = np.full_like(np.array(nominal_wpr), nominal_wss)
-        self.wpr_samples     = self._sample_field(nominal_wpr , wpr_err , self.sample_size)
-        self.doppler_samples = self._sample_field(nominal_doppler , doppler_err , self.sample_size)
         self.wse_samples     = self._sample_field(nominal_wse , self.WSE_sigma , self.sample_size)
         self.wss_samples     = self._sample_field(nominal_wss , self.WSS_sigma , self.sample_size)
         
@@ -451,66 +478,9 @@ class UAWOS_Discharge:
             yield ColumnData(vsurf, md, hl, hu, wss, x)
     
     # --------- Model report ---------- #
-    def _plot_geometry(self):
-        bdata = pd.read_csv(self.full_geometry).groupby('Distance along reference line (m)', as_index=False).mean()
-        vdata = pd.read_csv(self.velocity)
-        vdata =vdata.drop(columns=['Time'])
-        vdata = vdata.loc[vdata['RSS:Direction'] == -1]
-        vdata['Surface velocity (cm/s)']=abs(vdata['Two peak_full velocity (cm/s)'])
-        vdata = vdata.groupby(['Distance along reference line (m)'],as_index=False).mean()
-        vdatay = np.array(vdata['Surface velocity (cm/s)'])
-        rl = np.linspace(self.lb-5,self.rb+5,self.npoints)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.scatter(bdata[(bdata['Distance along reference line (m)']>self.lb-5) & (bdata['Distance along reference line (m)']<self.rb+5)]['Distance along reference line (m)']
-                         ,bdata[(bdata['Distance along reference line (m)']>self.lb-5) & (bdata['Distance along reference line (m)']<self.rb+5)]['z.' + self.z_EPSG + ' (m)']
-                         , color = '#D6D6D6' , edgecolors='#D6D6D6', linewidths=0.5,label = 'WPR+DEM')
-        ax.plot(plt.gca().get_xlim() ,[self.WSE,self.WSE],color = '#547BB4',  label = 'Water surface level' , linewidth = 2.5)
-        ax.plot(rl,self.bcs(rl),'y',label = 'Fitted line')
-        plt.scatter(self.rb , self.WSE ,label = 'Right land-water edge')
-        plt.scatter(self.lb , self.WSE ,label = 'Left land-water edge')
-        ax.set_xlabel( 'Cross section coordinate (m)' , fontsize = self.size_T)
-        ax.set_ylabel( 'Surface elevation (m)' , fontsize = self.size_T)
-        ax.set_title( 'Cross sectional geometry profile - ' + self.XSid , fontsize = self.size_T)
-        ax.legend(fontsize = self.size_T)
-        ax.tick_params(axis='both' , labelsize=self.size_T)
-        ax2 = ax.twinx()
-        ax2.set_ylabel('Surface velocity (cm/s)', fontsize=self.size_T, color='tab:red')
-        ax2.tick_params(axis='y', labelsize=self.size_T, labelcolor='tab:red')
-        rlv = np.linspace(self.lb , self.rb , 500)
-        left_min, left_max = ax.get_ylim()
-        v_min = 0
-        v_max = max(vdatay) * 1.2
-        left_range = left_max - left_min
-        relative_pos = (self.WSE - left_min) / (left_max - left_min)
-        v_bottom = - (v_max * relative_pos) / (1 - relative_pos)
-        ax2.set_ylim(v_bottom, v_max)
-        ax2.scatter(
-                    vdata['Distance along reference line (m)'],
-                    vdatay,    label='Velocity profile',
-                    color='red',    edgecolors='black',
-                    marker='*',    s=80 
-                    )
-        ax2.axhline(0, color = 'red', linestyle = ':' , linewidth=0.8)
-        ax2.legend(fontsize = self.size_T , loc = 'upper right', labelcolor='tab:red', edgecolor='tab:red')
-        ax.grid(axis='both',  linewidth=0.8, color='gray')  
-        ax2.grid(axis='y', linestyle='--', linewidth=0.8, color='tab:red')
-        fig.savefig(self.resultpath+os.sep+self.XSid+'-geometry.png', bbox_inches='tight')
-        plt.close(fig)
-    
-    def _find_logo(self):
-        logo_folder = os.path.join(self.project_path, 'logo')
-        if os.path.isdir(logo_folder):
-            for file in os.listdir(logo_folder):
-                if file.lower().endswith('.jpg'):
-                    return os.path.join(logo_folder, file)
     
     def generate_report(self):
         output_dir = self.resultpath
-        calc_mode_text = (
-            "<p style='font-size:22px;'><strong>Calculation Mode:</strong> Uncertainty considered (Monte Carlo).</p>"
-            if self.if_calc_uncertainty
-            else "<p style='font-size:22px;'><strong>Calculation Mode:</strong> No uncertainty considered.</p>"
-        )
         if hasattr(self, 'XS_info'):
             raw = pd.DataFrame([self.XS_info])
             drop_cols = [c for c in ['alpha_entropy', 'alpha_power', 'alpha_log'] if c in raw.columns]
@@ -542,83 +512,12 @@ class UAWOS_Discharge:
                 'Q_entropy'  : [_g('Q_entropy') if 'Q_entropy' in raw.columns else _g('Q_entropy_dip')],
                 'Ks_entropy' : [_g('Ks_entropy') if 'Ks_entropy' in raw.columns else _g('Ks_entropy_dip')],
             }).round(2)
-            table1_html = "<h3>Table 1: Cross Section Properties</h3>" + df_properties.to_html(index=False, border=1, classes='result-table')
-            table2_html = "<h3>Table 2: Velocity Index (α)</h3>" + df_alpha.to_html(index=False, border=1, classes='result-table')
-            table3_html = "<h3>Table 3: Discharge Results and Roughness (Without Uncertainty)</h3>" + df_result.to_html(index=False, border=1, classes='result-table')
-        else:
-            table1_html = table2_html = table3_html = ""
-        table4_html = ""
-        table5_html = ""
+            
         if self.if_calc_uncertainty and hasattr(self, 'XS_uncertainty_L2') and 'all' in self.XS_uncertainty_L2:
             df_full = pd.DataFrame(self.XS_uncertainty_L2['all'], index=[0]).T.reset_index()
             df_full.columns = ['Metric', 'Value']
             df_full.to_csv(self.resultpath + os.sep + self.XSid + '_ensemble.csv', index=False)
-            df_mean = df_full[df_full['Metric'].str.contains('mean', case=False)].copy().round(3)
-            df_std  = df_full[df_full['Metric'].str.contains('std', case=False)].copy().round(3)
-            table4_html = "<h3>Table 4: Uncertainty Analysis – Mean Values</h3>" + df_mean.to_html(index=False, border=1, classes='result-table')
-            table5_html = "<h3>Table 5: Uncertainty Analysis – Standard Deviations</h3>" + df_std.to_html(index=False, border=1, classes='result-table')
-        table6_html = ""
-        if self.if_calc_uncertainty and hasattr(self, 'XS_uncertainty_contribution') and self.XS_uncertainty_contribution:
-            contribution = self.XS_uncertainty_contribution
-            var_sources = [v for v in contribution.keys() if v != 'all']
-            metric_keys = list(contribution['all'].keys()) if 'all' in contribution else []
-            table_data = []
-            for metric in metric_keys:
-                row = {'Metric': metric.replace('_var', '')}
-                total_var = contribution['all'].get(metric, np.nan)
-                if total_var is None or np.isnan(total_var) or total_var == 0:
-                    for source in var_sources:
-                        row[source.upper()] = np.nan
-                else:
-                    for source in var_sources:
-                        var_i = contribution[source].get(metric, 0)
-                        row[source.upper()] = 100.0 * var_i / total_var if total_var > 0 else np.nan
-                table_data.append(row)
-            df_contrib = pd.DataFrame(table_data)
-            if not df_contrib.empty:
-                df_contrib = df_contrib[~df_contrib['Metric'].str.contains('Ks', case=False, na=False)]
-                df_contrib.rename(columns={
-                    'BCS': 'Bathymetry',
-                    'VCS': 'Velocity',
-                    'WSS': 'WSS',
-                    'WSE': 'WSE'
-                }, inplace=True)
-                df_contrib.to_csv(self.resultpath + os.sep + self.XSid + '_uncertainty_contribution.csv', index=False)
-                table6_html = "<h3>Table 6: Relative Contribution to Total Uncertainty [%]</h3>" + df_contrib.to_html(index=False, border=1, classes='result-table')
-        html_content = f"""
-        <html>
-        <head>
-            <title>UAWOS Discharge Report - {self.XSid}</title>
-            <link rel="icon" type="image/png" href="{self.logo_path}">
-            <style>
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; }}
-                .header {{ display: flex; align-items: center; }}
-                .header img {{ width: 100px; margin-right: 20px; }}
-                .header h1 {{ font-size: 24px; }}
-                .result-table {{ margin-top: 20px; border-collapse: collapse; width: 100%; font-size: 18px}}
-                .result-table th, .result-table td {{ border: 1px solid #999; padding: 8px; }}
-            </style>
-        </head>
-        <body>
-            <div class='header'>
-                {f"<img src='{self.logo_path}'>" if self.logo_path else "<h1 style='color:#007BFF; font-size:26px; font-weight:bold;'>UAWOS | </h1>"}
-                <h1>UAWOS Discharge Measurement Report</h1>
-            </div>
-            <h2>Cross Section: {self.XSid}</h2>
-            {calc_mode_text}
-            <img src='{self.resultpath+os.sep+self.XSid+'-geometry.png'}' style='width:90%;'>
-            {table1_html}
-            {table2_html}
-            {table3_html}
-            {table4_html}
-            {table5_html}
-            {table6_html}
-        </body>
-        </html>
-        """
-        html_file = os.path.join(output_dir, f"{self.XSid}-report.html")
-        with open(html_file, 'w', encoding='utf-8') as f:
-            f.write(html_content)
+            
         print("-----------------------------------")
-        print(f"HTML report generated: {html_file}")
+        print(f"Results generated: {output_dir}")
         print("-----------------------------------")
