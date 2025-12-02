@@ -35,6 +35,7 @@ Orco_1_attributes['CL_dist_threshold'] = 100
 Orco_1_attributes['gain_power'] = 3 # These are parameters for the radargram visulization
 Orco_1_attributes['gain_lt'] = 0.2 # These are parameters for the radargram visulization
 Orco_1_attributes['gain_ut'] = 3 # These are parameters for the radargram visulization
+Orco_1_attributes['interp_threshold'] = 20 # In the manual picking points closer than this in tracenumber will be linearly interpolated
 
 Orco_1 = UAWOS_ZAero_flight(Orco_1_attributes)
 #%%

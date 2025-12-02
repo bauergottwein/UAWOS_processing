@@ -264,16 +264,64 @@ class UAWOS_ZAero_flight:
                 num_1 = num_1+1
             points_prof[:, 1] = np.around(points_prof[:, 1], 4)
             plt.plot(points_prof[:, 0], points_prof[:, 1], 'r.')
-            # manual updating by picking
+            # Manual updating by picking
             plt.xlim(-plot_trace_margin , gndata.shape[1]+plot_trace_margin)
             print('Please manual updating by right-clicking your mouse, and clicking the middle for the ending:')
-            points_surf = plt.ginput(-1, timeout=-1, show_clicks=True,mouse_add=3, mouse_pop=1, mouse_stop=2)
+            points_surf = plt.ginput(-1, timeout=-1, show_clicks=True, mouse_add=3, mouse_pop=1, mouse_stop=2)
             points_manu = np.array(points_surf)
+            
+            # Plot the manually picked points
             plt.plot(points_manu[:, 0], points_manu[:, 1], 'w*')
-            for idx in range(points_manu.shape[0]):
-                new_idx = int(np.around(points_manu[idx, 0]))
-                points_prof[new_idx, 1] = points_manu[idx, 1]
-            plt.draw() 
+            
+            # --- Start of New Logic for Interpolation ---
+            # Ensure we have points to work with
+            if points_manu.shape[0] >= 2:
+                
+                # 1. Sort the manual points by trace index (X-coordinate)
+                points_manu = points_manu[np.argsort(points_manu[:, 0])]
+                
+                # Define the threshold for interpolation (e.g., interpolate only if points are within 50 traces)
+                # You should define a variable like self.interp_threshold
+                interp_threshold = self.interp_threshold # Example value: 50 traces
+            
+                # 2. Iterate through neighboring manual picks
+                for idx in range(points_manu.shape[0] - 1):
+                    
+                    # Get the current and next manual point
+                    p1_x = int(np.around(points_manu[idx, 0]))
+                    p1_y = points_manu[idx, 1]
+                    
+                    p2_x = int(np.around(points_manu[idx + 1, 0]))
+                    p2_y = points_manu[idx + 1, 1]
+            
+                    # Check if the distance between the points exceeds the threshold
+                    if (p2_x - p1_x) <= interp_threshold:
+                        # Linear interpolation is warranted
+                        
+                        # Create the X-coordinates (trace indices) for the segment to be interpolated
+                        segment_x = np.arange(p1_x, p2_x + 1)
+                        
+                        # Perform linear interpolation
+                        # np.interp(x_new, x_old, y_old)
+                        segment_y = np.interp(segment_x, [p1_x, p2_x], [p1_y, p2_y])
+                        
+                        # Update the points_prof array with the interpolated values
+                        points_prof[segment_x, 1] = segment_y
+                    
+                    else:
+                        # If distance exceeds threshold, only update the exact picked points
+                        points_prof[p1_x, 1] = p1_y
+                        points_prof[p2_x, 1] = p2_y
+                        
+                # Handle the first and last point if no interpolation occurred at the edges
+                else:
+                    # If there's only one point, update it directly
+                    if points_manu.shape[0] == 1:
+                        new_idx = int(np.around(points_manu[0, 0]))
+                        points_prof[new_idx, 1] = points_manu[0, 1]
+                        
+            plt.plot(points_prof[:, 0], points_prof[:, 1], 'w-') # Plot the final profile as a line
+            plt.draw()
             plt.pause(0.01)
             # Figure 3 for showing updated results
             plt.figure() 
