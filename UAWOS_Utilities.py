@@ -4,6 +4,8 @@ Created on Thu May  8 11:30:36 2025
 
 @author: vpk410
 """
+import os
+import struct
 import numpy as np
 from datetime import datetime, timedelta
 from osgeo import gdal
@@ -143,6 +145,37 @@ def hubdist(points_in,hubs,tol,chainage_field,**kwargs): # matches data points t
     points = points.loc[points[Distance_Hubs_out]<=tol]
     return points
 
+def _rename_corrected_file(src_path ): # Internal function for readsegy
+    #*****************************************************************************
+    # Adjustable input
+    #*****************************************************************************  
+    suffix= "_corrected"
+    #*****************************************************************************
+    folder, name = os.path.split(src_path)
+    stem, ext = os.path.splitext(name)
+    return os.path.join(folder, f"{stem}{suffix}{ext}")
+
+def _correct_segy_file( in_path, out_path): # Internal function for readsegy
+    #*****************************************************************************
+    # Adjustable input
+    #***************************************************************************** 
+    ns = 512
+    bps = 4
+    header_size = 3600
+    trace_header_size = 240
+    #*****************************************************************************
+    size = os.path.getsize(in_path)
+    step = trace_header_size + ns * bps
+    n_traces = (size - header_size) // step
+    with open(in_path, "rb") as fin, open(out_path, "wb") as fout:
+        fout.write(fin.read(header_size))
+        for _ in range(int(n_traces)):
+            th = bytearray(fin.read(trace_header_size))
+            th[114:116] = struct.pack(">H", ns)
+            fout.write(th)
+            fout.write(fin.read(ns * bps))
+    return out_path
+
 def readsegy(filename): #areads full waveform data from WPR/Doppler
     #*****************************************************************************
     # Adjustable input
@@ -153,23 +186,56 @@ def readsegy(filename): #areads full waveform data from WPR/Doppler
     endian_str = 'little'
     dt_unit_conv = 1000.
     #*****************************************************************************  
-    with segyio.open(filename,strict = strict_yn,endian = endian_str) as f:
-        traces = [np.copy(tr) for tr in f.trace[skiptraceini:-(skiptraceend +1)]]
-        headers = [head for head in f.header[skiptraceini:-(skiptraceend +1)]]
-        sample_rate = segyio.tools.dt(f) / dt_unit_conv
-    print('Sampling rate: ', sample_rate)
-    ntrace = len(traces)
-    print('Number of traces in dataset: ', ntrace)
-    nsamples = len(traces[0])
-    print('Number of samples in each trace: ',nsamples)
-    traces = np.transpose(np.array(traces))
-    hdic = []
-    for i in range(ntrace):
-        hnow = dict((a.strip(), int(b.strip()))
-                         for a, b in (element.split(':')  
-                                      for element in str(headers[i])[2:-1].split(', ')))
-        hdic.append(hnow)      
-    return traces, hdic, sample_rate, ntrace, nsamples
+    try:
+        with segyio.open(filename,strict = strict_yn,endian = endian_str) as f:
+            traces = [np.copy(tr) for tr in f.trace[skiptraceini:-(skiptraceend +1)]]
+            headers = [head for head in f.header[skiptraceini:-(skiptraceend +1)]]
+            sample_rate = segyio.tools.dt(f) / dt_unit_conv
+        print('Sampling rate: ', sample_rate)
+        ntrace = len(traces)
+        print('Number of traces in dataset: ', ntrace)
+        nsamples = len(traces[0])
+        print('Number of samples in each trace: ',nsamples)
+        traces = np.transpose(np.array(traces))
+        hdic = []
+        for i in range(ntrace):
+            hnow = dict((a.strip(), int(b.strip()))
+                             for a, b in (element.split(':')  
+                                          for element in str(headers[i])[2:-1].split(', ')))
+            hdic.append(hnow)      
+        return traces, hdic, sample_rate, ntrace, nsamples
+    except Exception as e1:
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"Error while read sgy file：{e1}")
+        print("Attempting internal correction...")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        corrected_path = _rename_corrected_file(filename, suffix="_corrected")
+        try:
+            _correct_segy_file( in_path=filename, out_path=corrected_path )
+        except Exception as e2:
+            print(f"Internal correction failed (file writing stage): {e2}")
+            raise RuntimeError("Internal correction failed...") from e2
+        try:
+            with segyio.open(corrected_path ,strict = strict_yn,endian = endian_str) as f:
+                traces = [np.copy(tr) for tr in f.trace[skiptraceini:-(skiptraceend +1)]]
+                headers = [head for head in f.header[skiptraceini:-(skiptraceend +1)]]
+                sample_rate = segyio.tools.dt(f) / dt_unit_conv
+            print('Sampling rate: ', sample_rate)
+            ntrace = len(traces)
+            print('Number of traces in dataset: ', ntrace)
+            nsamples = len(traces[0])
+            print('Number of samples in each trace: ',nsamples)
+            traces = np.transpose(np.array(traces))
+            hdic = []
+            for i in range(ntrace):
+                hnow = dict((a.strip(), int(b.strip()))
+                                 for a, b in (element.split(':')  
+                                              for element in str(headers[i])[2:-1].split(', ')))
+                hdic.append(hnow)      
+            return traces, hdic, sample_rate, ntrace, nsamples
+        except Exception as e3:
+            print(f"Internal correction failed:{e3}")
+            raise RuntimeError("Internal correction failed...") from e3
 
 def peakmodel2(v,mu1,mu2,s1,s2,f1,f2):
     ret_pow = f1*norm.pdf((v-mu1)/s1) + f2*norm.pdf((v-mu2)/s2)
