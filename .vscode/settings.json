@@ -1,0 +1,18 @@
+{
+  "workbench.colorTheme": "Light Modern",
+  "editor.fontSize": 14,
+  "editor.minimap.enabled": false,
+  "jupyter.kernels.filter": [
+    {
+      "path": "c:\\\\Temp\\\\*\\\\.pixi\\\\envs\\\\default\\\\python.exe",
+      "type": "pythonEnvironment",
+      "exclude": true
+    }
+  ],
+  "jupyter.widgetScriptSources": [
+    "sdk",
+    "inline"
+  ],
+  "python.terminal.activateEnvironment": false,
+  "jupyter.notebookFileRoot": "${workspaceFolder}"
+}
